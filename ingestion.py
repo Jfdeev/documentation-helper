@@ -44,11 +44,13 @@ async def index_documents_async(docs: List[Document], batch_size: int = 50):
         return True
     tasks = [add_batches(batch, i) for i, batch in enumerate(batches)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    for i, result in enumerate(results):
-        if result is False:
-            log.error(f"Batch {i} failed to index.", Colors.RED)
-        else:
-            log.info(f"Batch {i} indexed successfully.", Colors.GREEN)
+
+    successful = sum(1 for result in results if result is True)
+
+    if successful == len(batches):
+        log.info(f"Successfully indexed all {len(docs)} documents in {len(batches)} batches.", Colors.GREEN)
+    else:
+        log.warning(f"Indexed {successful} out of {len(batches)} batches successfully.", Colors.YELLOW) 
 
 
 async def main():
@@ -72,6 +74,8 @@ async def main():
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     split_docs = text_splitter.split_documents(all_docs)
+
+    await index_documents_async(split_docs, batch_size=500)
 
 if __name__ == "__main__":
     asyncio.run(main())
